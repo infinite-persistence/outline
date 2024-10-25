@@ -38,6 +38,8 @@ function Comments() {
 
   const readyToDisplay = Boolean(document && isEditorInitialized);
   const scrollableRef = React.useRef<HTMLDivElement | null>(null);
+  const isAtBottom = React.useRef(false);
+  const [showJumpToRecentBtn, setShowJumpToRecentBtn] = React.useState(false);
 
   useKeyDown("Escape", () => document && ui.collapseComments(document?.id));
 
@@ -71,12 +73,39 @@ function Comments() {
     }
   };
 
+  const handleScroll = () => {
+    if (scrollableRef.current) {
+      const {
+        scrollHeight: sh,
+        scrollTop: st,
+        clientHeight: ch,
+      } = scrollableRef.current;
+      isAtBottom.current = Math.abs(sh - (st + ch)) <= 1;
+    }
+    if (isAtBottom.current) {
+      setShowJumpToRecentBtn(false);
+    }
+  };
+
   React.useEffect(() => {
     if (readyToDisplay && sortByMostRecent) {
       // Covers: (1) on refresh (2) when switching sort setting
       scrollToBottom();
     }
   }, [sortByMostRecent, readyToDisplay]);
+
+  React.useEffect(() => {
+    setShowJumpToRecentBtn(false);
+    if (sortByMostRecent) {
+      if (threads.length > 0) {
+        if (isAtBottom.current) {
+          scrollToBottom(); // Remain pinned to bottom on new comments
+        } else {
+          setShowJumpToRecentBtn(true); // Hint user that new comments are available
+        }
+      }
+    }
+  }, [threads.length]);
 
   if (!readyToDisplay) {
     return null;
@@ -99,6 +128,7 @@ function Comments() {
         hiddenScrollbars
         topShadow
         ref={scrollableRef}
+        onScroll={handleScroll}
       >
         <Wrapper $hasComments={hasComments}>
           {hasComments ? (
@@ -119,6 +149,9 @@ function Comments() {
                   : t("No comments yet")}
               </PositionedEmpty>
             </NoComments>
+          )}
+          {showJumpToRecentBtn && (
+            <ScrollToRecent onClick={scrollToBottom}>↓</ScrollToRecent>
           )}
         </Wrapper>
       </Scrollable>
@@ -153,6 +186,29 @@ const NoComments = styled(Flex)`
 
 const Wrapper = styled.div<{ $hasComments: boolean }>`
   height: ${(props) => (props.$hasComments ? "auto" : "100%")};
+`;
+
+const ScrollToRecentSize = "32px";
+
+const ScrollToRecent = styled.div`
+  position: sticky;
+  bottom: 12px;
+  margin-top: -${ScrollToRecentSize};
+  width: ${ScrollToRecentSize};
+  height: ${ScrollToRecentSize};
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${(props) => props.theme.accent};
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0.7;
+
+  &:hover {
+    opacity: 1;
+  }
 `;
 
 const NewCommentForm = styled(CommentForm)<{ dir?: "ltr" | "rtl" }>`
