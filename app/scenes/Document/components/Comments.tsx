@@ -32,6 +32,12 @@ function Comments() {
   const document = documents.getByUrl(match.params.documentSlug);
   const focusedComment = useFocusedComment();
   const can = usePolicy(document);
+  const sortByMostRecent = !user.getPreference(
+    UserPreference.SortCommentsByOrderInDocument
+  );
+
+  const readyToDisplay = Boolean(document && isEditorInitialized);
+  const scrollableRef = React.useRef<HTMLDivElement | null>(null);
 
   useKeyDown("Escape", () => document && ui.collapseComments(document?.id));
 
@@ -57,7 +63,22 @@ function Comments() {
     : comments.unresolvedThreadsInDocument(document.id, sortOption);
   const hasComments = threads.length > 0;
 
-  if (!document || !isEditorInitialized) {
+  const scrollToBottom = () => {
+    if (scrollableRef.current) {
+      scrollableRef.current.scrollTo({
+        top: scrollableRef.current.scrollHeight,
+      });
+    }
+  };
+
+  React.useEffect(() => {
+    if (readyToDisplay && sortByMostRecent) {
+      // Covers: (1) on refresh (2) when switching sort setting
+      scrollToBottom();
+    }
+  }, [sortByMostRecent, readyToDisplay]);
+
+  if (!readyToDisplay) {
     return null;
   }
 
@@ -69,7 +90,7 @@ function Comments() {
           <CommentSortMenu />
         </Flex>
       }
-      onClose={() => ui.collapseComments(document?.id)}
+      onClose={() => ui.collapseComments(document!.id)}
       scrollable={false}
     >
       <Scrollable
@@ -77,6 +98,7 @@ function Comments() {
         bottomShadow={!focusedComment}
         hiddenScrollbars
         topShadow
+        ref={scrollableRef}
       >
         <Wrapper $hasComments={hasComments}>
           {hasComments ? (
@@ -84,7 +106,7 @@ function Comments() {
               <CommentThread
                 key={thread.id}
                 comment={thread}
-                document={document}
+                document={document!}
                 recessed={!!focusedComment && focusedComment.id !== thread.id}
                 focused={focusedComment?.id === thread.id}
               />
@@ -105,10 +127,10 @@ function Comments() {
           <NewCommentForm
             draft={draft}
             onSaveDraft={onSaveDraft}
-            documentId={document.id}
+            documentId={document!.id}
             placeholder={`${t("Add a comment")}…`}
             autoFocus={false}
-            dir={document.dir}
+            dir={document!.dir}
             animatePresence
             standalone
           />
@@ -130,7 +152,6 @@ const NoComments = styled(Flex)`
 `;
 
 const Wrapper = styled.div<{ $hasComments: boolean }>`
-  padding-bottom: ${(props) => (props.$hasComments ? "50vh" : "0")};
   height: ${(props) => (props.$hasComments ? "auto" : "100%")};
 `;
 
