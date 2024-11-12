@@ -457,7 +457,16 @@ router.post(
     const userId = user.id;
     const views = await View.findAll({
       where: {
-        userId,
+        [Op.and]: [
+          { userId },
+          {
+            [Op.or]: [
+              { "$document.collectionId$": collectionIds },
+              { "$document.memberships.userId$": userId }, // <-- this fails when `offset|limit` is used.
+              { "$document.groupMemberships$": { [Op.ne]: null } }, // <-- why doesn't work? there is an open bug in github, maybe related.
+            ],
+          },
+        ],
       },
       order: [[sort, direction]],
       include: [
@@ -467,9 +476,6 @@ router.post(
             { method: ["withMembership", userId] },
           ]),
           required: true,
-          where: {
-            collectionId: collectionIds,
-          },
           include: [
             {
               model: Collection.scope({
