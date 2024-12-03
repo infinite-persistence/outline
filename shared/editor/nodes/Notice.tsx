@@ -5,9 +5,11 @@ import { NodeSpec, Node as ProsemirrorNode, NodeType } from "prosemirror-model";
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { Primitive } from "utility-types";
+import NoticeMenu from "~/editor/components/NoticeMenu";
 import toggleWrap from "../commands/toggleWrap";
 import { MarkdownSerializerState } from "../lib/markdown/serializer";
 import noticesRule from "../rules/notices";
+import { ComponentProps } from "../types";
 import Node from "./Node";
 
 export default class Notice extends Node {
@@ -111,6 +113,19 @@ export default class Notice extends Node {
       },
     };
   }
+
+  component = (props: ComponentProps) => {
+    return (
+      <div className={`notice-block ${props.node.attrs.style}`}>
+        <div className="icon">
+          <NoticeMenu type={props.node.attrs.style}/>
+        </div>
+        <div className="content">
+          ??????? TODO: render or `contentDOM` ???????
+        </div>
+      </div>
+    );
+  };
 
   commands({ type }: { type: NodeType }) {
     return (attrs: Record<string, Primitive>) => toggleWrap(type, attrs);
